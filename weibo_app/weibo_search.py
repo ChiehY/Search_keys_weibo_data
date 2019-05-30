@@ -120,6 +120,24 @@ def Get_text(mid_url):
     weibo_text = re.sub(r'<.*?>', '', web_text).rstrip("']").rstrip().rstrip('\"').rstrip('全文').lstrip("['")
     return weibo_text
 
+def Get_pos(pos_url):
+    pos_tr = header_code(pos_url)
+    weibo_text = re.sub(r'<.*?>', '', str(pos_tr))
+    list=['"page_url"','"page_title"','"content1"','"content2"']
+    position=[]
+    is_pos = 'https://m.weibo.cn/p/index?containerid='
+    for i in range(3):
+        pattern = re.findall(r''+list[i]+':.*?([\s\S]*?)'+list[i+1]+':', str(weibo_text), re.S | re.M)
+        if pattern:
+           re_pat=((re.sub('\\\\', '', ((str(pattern[0]).rstrip()).rstrip('n')))).rstrip(','))
+        else:
+            re_pat=[]
+        position.append(re_pat)
+    if re_pat and is_pos in position[0]:
+        pos = {"地址": eval(position[1]), "详细地址介绍":eval(position[2])}
+    else:pos=[]
+    return pos
+
 def clean_text(text):
     """清除文本中的标签等信息"""
     dr = re.compile(r'(<)[^>]+>', re.S)
@@ -143,6 +161,7 @@ def fetch_data(query_val, page_id):
         # print(detail_url)
         put_time = Get_time(detail_url)
         mtext = Get_text(detail_url)
+        pos = Get_pos(detail_url)
         if len(mtext)<len(clean_text(mblog['text'])):
             mtext=clean_text(mblog['text'])
         elif mtext=='':
@@ -159,7 +178,8 @@ def fetch_data(query_val, page_id):
                 "发布时间": put_time,
                 # "概要": clean_text(mblog['text']),  # 文本
                 "内容": mtext,
-                '配图url': img_url,
+                "配图url": img_url,
+                "发布位置": pos,
                 "转发数": mblog['reposts_count'],  # 转发
                 "评论数": mblog['comments_count'],  # 评论
                 "点赞数": mblog['attitudes_count'] # 点赞
@@ -188,6 +208,7 @@ def fetch_pages(query_val, page_num):
             mblogs.extend(fetch_data(query_val, page_id))
         except Exception as e:
             print(e)
+        time.sleep(2)
     # print("去重前：", len(mblogs))
     mblogs = remove_duplication(mblogs)
     # print("去重后：", len(mblogs))
